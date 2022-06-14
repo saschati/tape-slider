@@ -55,7 +55,7 @@ export default class Up extends Direction {
      * @returns {boolean}
      */
     isFinished() {
-        return (super.isFinished() && (0 > (this.needDistance + this.passed)));
+        return (super.isFinished() && (0 >= (this.needDistance + this.passed)));
     }
 
     /**
