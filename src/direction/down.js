@@ -9,7 +9,7 @@ export default class Down extends Direction {
      * @returns {number}
      */
     getNeedDistance() {
-        return (this.distance - this.item.offsetTop + Math.abs(this.passed));
+        return (this.distance - this.item.offsetTop);
     }
 
     /**
@@ -23,7 +23,7 @@ export default class Down extends Direction {
      * @returns {number}
      */
     getDistance() {
-        return (this.distance + this.item.offsetHeight);
+        return (this.distance);
     }
 
     /**
@@ -55,7 +55,7 @@ export default class Down extends Direction {
      * @returns {boolean}
      */
     isFinished() {
-        return (this.proggressed > this.needDistance);
+        return (super.isFinished() && (this.proggressed >= this.needDistance));
     }
 
     /**

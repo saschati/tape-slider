@@ -9,7 +9,7 @@ export default class Right extends Direction {
      * @returns {number}
      */
     getNeedDistance() {
-        return (this.distance - this.item.offsetLeft + Math.abs(this.passed));
+        return (this.distance - this.item.offsetLeft);
     }
 
     /**
@@ -23,7 +23,7 @@ export default class Right extends Direction {
      * @returns {number}
      */
     getDistance() {
-        return (this.distance + this.item.offsetWidth)
+        return (this.distance)
     }
 
     /**
@@ -55,7 +55,7 @@ export default class Right extends Direction {
      * @returns {boolean}
      */
     isFinished() {
-        return (this.proggressed > this.needDistance);
+        return (super.isFinished() && this.proggressed >= this.needDistance);
     }
 
     /**
@@ -66,6 +66,6 @@ export default class Right extends Direction {
     }
 
     static sort(items) {
-        return Array.from(items).reverse();
+        return super.sort(items).reverse();
     }
 }
