@@ -15,7 +15,7 @@ export default class Tape {
      *      shift: ShiftX,
      *      insert: string,
      *      animate: Animate
-     *      visibilitychange: boolean
+     *      elasticDistance: boolean
      *   }
      * }
      */
@@ -40,6 +40,10 @@ export default class Tape {
          * The class responsible for the output of the tape
          */
         shift: ShiftX,
+        /**
+         * Whether to calculate the length of the tape that you need to pass the elements given the size of its content
+         */
+        elasticDistance: true,
     }
 
     /**
@@ -89,13 +93,17 @@ export default class Tape {
      * @return {Promise<void>}
      */
     async run() {
+        if (this.state !== State.UNSPECIFIED) {
+            throw new Error(`The feed is currently running and its status does not match the uncertainty. Current status of the tape: '${this.state}'`);
+        }
+
         this.state = State.START;
         this.tapeAbort = new AbortController();
 
         const shift = new this.options.shift();
-        const distance = shift instanceof ShiftX ? this.wrapper.clientWidth : this.wrapper.clientHeight;
 
         this.items = this.direction.sort(this.wrapper.children);
+        const distance = this.getDistance(shift);
 
         this.events();
 
@@ -202,5 +210,51 @@ export default class Tape {
         this.animateCollection.set(direction, animation);
 
         animation.begin();
+    }
+
+    /**
+     * A private method that determines the length of the tape according to which offset line
+     *
+     * @param {ShiftX} shift
+     * @return {number}
+     */
+    getDistance(shift) {
+        let distance;
+
+        const getItemDistance = (positionProperty = 'offsetLeft', sizeProperty = 'offsetWidth') => {
+            const [itemFirst] = this.items;
+            const itemLast = this.items[this.items.length - 1];
+
+            const firstDistance = itemFirst[positionProperty] + itemFirst[sizeProperty];
+            const lastDistance = itemLast[positionProperty] + itemLast[sizeProperty];
+
+            return firstDistance > lastDistance ? firstDistance : lastDistance;
+        }
+
+        if (shift instanceof ShiftX) {
+            distance = this.wrapper.clientWidth;
+
+            if (this.options.elasticDistance === true) {
+                const itemDistance = getItemDistance();
+
+                if (itemDistance > distance) {
+                    distance = itemDistance;
+                }
+            }
+
+            return distance;
+        }
+
+        distance = this.wrapper.clientHeight;
+
+        if (this.options.elasticDistance === true) {
+            const itemDistance = getItemDistance('offsetTop', 'offsetHeight');
+
+            if (itemDistance > distance) {
+                distance = itemDistance;
+            }
+        }
+
+        return distance;
     }
 }
