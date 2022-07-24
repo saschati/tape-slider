@@ -1,39 +1,20 @@
-export default class State {
+var State;
+(function (State) {
     /**
-     * Undefined status when instantiating tape or destroyed plugin
-     *
-     * @return {string}
-     * @constructor
+     * Undefined status when instantiating tape or destroyed plugin.
      */
-    static get UNSPECIFIED() {
-        return 'unspecified';
-    }
+    State["UNSPECIFIED"] = "unspecified";
     /**
-     * At the beginning of the initialization of the tape
-     *
-     * @return {string}
-     * @constructor
+     * At the beginning of the initialization of the tape.
      */
-    static get START() {
-        return 'start';
-    }
+    State["START"] = "start";
     /**
-     * Indicates that the tape is up and running
-     *
-     * @return {string}
-     * @constructor
+     * Indicates that the tape is up and running.
      */
-    static get WORK() {
-        return 'work';
-    }
-
+    State["WORK"] = "work";
     /**
-     * Indicates that the tape is paused
-     *
-     * @return {string}
-     * @constructor
+     * Indicates that the tape is paused.
      */
-    static get PAUSE() {
-        return 'pause';
-    }
-}
+    State["PAUSE"] = "pause";
+})(State || (State = {}));
+export default State;

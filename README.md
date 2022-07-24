@@ -43,8 +43,8 @@ import Left from "@saschati/tape-slider/src/direction/left";
 import Up from "@saschati/tape-slider/src/direction/up";
 import Down from "@saschati/tape-slider/src/direction/down";
 // Offset classes, these classes are responsible for reproducing the movement of the object in the tape
-import ShiftY from "@saschati/tape-slider/src/direction/shifx/shift-y";
-import ShiftX from "@saschati/tape-slider/src/direction/shifx/shift-x";
+import ShiftY from "@saschati/tape-slider/src/direction/shift/shift-y";
+import ShiftX from "@saschati/tape-slider/src/direction/shift/shift-x";
 // A linear function for calculating how progress should be calculated
 import linage from "@saschati/tape-slider/src/animate/timing/linage";
 // The class of the tape itself
@@ -68,8 +68,8 @@ window.addEventListener('load', function () {
     tape.run();
     // Pause tape
     tape.pause();
-    // Unpause tape
-    tape.unpause();
+    // Resume tape
+    tape.resume();
     // Destroy tape
     tape.destroy();
 });

@@ -1,260 +1,191 @@
-import linage from './animate/timing/linage';
-import ShiftX from './direction/shifx/shift-x';
-import Right from './direction/right';
-import State from './chunk/state';
-import Animate from './animate/animate'
-
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+import linage from "./animate/timing/linage";
+import ShiftX from "./direction/shift/shift-x";
+import Right from "./direction/right";
+import Animate from "./animate/animate";
+import State from "./chunk/state";
 export default class Tape {
-    /**
-     * Plugin options
-     *
-     * @type {
-     *  {
-     *      duration: number,
-     *      timing: (function(*): *)|*,
-     *      shift: ShiftX,
-     *      insert: string,
-     *      animate: Animate
-     *      elasticDistance: boolean
-     *   }
-     * }
-     */
-    options = {
+    constructor({ wrapper, direction = Right, options = undefined, }) {
         /**
-         * Tape speed
+         * Plugin options.
          */
-        duration: 20000,
+        this.options = {
+            duration: 20000,
+            timing: linage,
+            animate: Animate,
+            insert: "append",
+            shift: ShiftX,
+            elasticDistance: true,
+            optimize: true,
+        };
         /**
-         * Time function for animations when moving the ribbon
+         * Plugin status.
          */
-        timing: linage,
+        this.state = State.UNSPECIFIED;
         /**
-         * The animation class that will perform the animation action
+         * Collection of directions with the value of the ribbon element and its direction.
          */
-        animate: Animate,
+        this.directionCollection = new WeakMap();
         /**
-         * The method of adding a clone to the tape
+         * A collection of animations with the value of direction and animation that is responsible for this direction.
          */
-        insert: 'append',
-        /**
-         * The class responsible for the output of the tape
-         */
-        shift: ShiftX,
-        /**
-         * Whether to calculate the length of the tape that you need to pass the elements given the size of its content
-         */
-        elasticDistance: true,
-    }
-
-    /**
-     * Plugin status
-     *
-     * @type {string}
-     */
-    state = State.UNSPECIFIED;
-
-    /**
-     * Collection of directions with the value of the ribbon element and its direction
-     *
-     * @type {WeakMap<Element, Right>}
-     */
-    directionCollection = new WeakMap();
-
-    /**
-     * A collection of animations with the value of direction and animation that is responsible for this direction
-     *
-     * @type {WeakMap<Right, Animate>}
-     */
-    animateCollection = new WeakMap();
-
-    /**
-     * @param {Element} wrapper
-     * @param {Right} direction
-     * @param {
-     *  {
-     *      duration: number,
-     *      timing: (function(*): *)|*,
-     *      shift: ShiftX,
-     *      insert: string,
-     *      animate: animate
-     *   }
-     * } options
-     */
-    constructor({wrapper, direction = Right, options = {}}) {
+        this.animateCollection = new WeakMap();
         this.wrapper = wrapper;
         this.direction = direction;
-
-        Object.assign(this.options, options);
+        Object.assign(this.options, options !== null && options !== void 0 ? options : {});
     }
-
     /**
-     * A public method that runs the entire tape
-     *
-     * @return {Promise<void>}
+     * A public method that runs the entire tape.
      */
-    async run() {
-        if (this.state !== State.UNSPECIFIED) {
-            throw new Error(`The feed is currently running and its status does not match the uncertainty. Current status of the tape: '${this.state}'`);
-        }
-
-        this.state = State.START;
-        this.tapeAbort = new AbortController();
-
-        const shift = new this.options.shift();
-
-        this.items = this.direction.sort(this.wrapper.children);
-        const distance = this.getDistance(shift);
-
-        this.events();
-
-        this.items.forEach(item => this.moveTapeItem(new this.direction({item, distance, shift})));
-
-        this.state = State.WORK;
-    }
-
-    /**
-     * Public method that will suspend the tape
-     *
-     * @return {Promise<void>}
-     */
-    async pause() {
-        if (State.WORK !== this.state) {
-            throw new Error(`The tape does not move so it cannot be stopped. Current status of the tape: '${this.state}'`);
-        }
-
-        this.state = State.PAUSE;
-
-        this.items.forEach(item => {
-            const direction = this.directionCollection.get(item);
-            const animation = this.animateCollection.get(direction);
-
-            animation.wait();
+    run() {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (this.state !== State.UNSPECIFIED) {
+                throw new Error(`The feed is currently running and its status does not match the uncertainty. Current status of the tape: '${this.state}'`);
+            }
+            this.state = State.START;
+            this.tapeAbort = new AbortController();
+            const shift = new this.options.shift();
+            this.items = this.direction.sort(this.wrapper.children);
+            const distance = this.getDistance(shift);
+            this.events();
+            this.items.forEach((item) => this.moveTapeItem(new this.direction({ item, distance, shift })));
+            if (this.options.optimize === true) {
+                this.observer = new IntersectionObserver(([entity]) => {
+                    if ((entity === null || entity === void 0 ? void 0 : entity.isIntersecting) === true) {
+                        if (this.state === State.WORK) {
+                            return;
+                        }
+                        this.resume();
+                    }
+                    else {
+                        if (this.state === State.PAUSE) {
+                            return;
+                        }
+                        this.pause();
+                    }
+                });
+                this.observer.observe(this.wrapper);
+            }
+            this.state = State.WORK;
         });
     }
-
     /**
-     * Public method for removing tape from pause
-     *
-     * @return {void}
+     * Public method that will suspend the tape.
      */
-    async unpause() {
-        if (this.state !== State.PAUSE) {
-            throw new Error(`The tape is not paused at this time. Current status of the tape: '${this.state}'`);
-        }
-
-        this.state = State.WORK;
-
-        this.items.forEach(item => {
-            const direction = this.directionCollection.get(item);
-            const animation = this.animateCollection.get(direction);
-
-            animation.continue();
+    pause() {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (State.WORK !== this.state) {
+                throw new Error(`The tape does not move so it cannot be stopped. Current status of the tape: '${this.state}'`);
+            }
+            this.state = State.PAUSE;
+            this.items.forEach((item) => {
+                const direction = this.directionCollection.get(item);
+                const animation = this.animateCollection.get(direction);
+                animation.wait();
+            });
         });
     }
-
     /**
-     * Destroy the plug-in environment, used when switching between windows, and can be useful after adding and removing ribbon dynamically
-     *
-     * @return {void}
+     * Public method for removing tape from pause.
+     */
+    resume() {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (this.state !== State.PAUSE) {
+                throw new Error(`The tape is not paused at this time. Current status of the tape: '${this.state}'`);
+            }
+            this.state = State.WORK;
+            this.items.forEach((item) => {
+                const direction = this.directionCollection.get(item);
+                const animation = this.animateCollection.get(direction);
+                animation.continue();
+            });
+        });
+    }
+    /**
+     * Destroy the plug-in environment, used when switching between windows, and can be useful after adding and removing ribbon dynamically.
      */
     destroy() {
+        var _a;
         if (this.state === State.UNSPECIFIED) {
-            throw new Error('The plugin has not yet started, there is nothing to destroy.');
+            throw new Error("The plugin has not yet started, there is nothing to destroy.");
         }
-
         this.tapeAbort.abort();
-
+        (_a = this.observer) === null || _a === void 0 ? void 0 : _a.disconnect();
         this.directionCollection = new WeakMap();
         this.animateCollection = new WeakMap();
-
         this.state = State.UNSPECIFIED;
     }
-
     /**
-     * A private method for setting baseline tape events
-     *
-     * @return {void}
+     * A private method for setting baseline tape events.
      */
     events() {
         const signal = this.tapeAbort.signal;
-
-        this.wrapper.addEventListener('tape-animate-clone', evt => {
+        this.wrapper.addEventListener("tapeAnimateClone", (evt) => {
             const direction = evt.detail.direction;
-
             direction.showClone((clone) => {
                 this.wrapper[this.options.insert](clone);
             });
-        }, {signal});
-        this.wrapper.addEventListener('tape-animate-end', evt => {
+        }, { signal });
+        this.wrapper.addEventListener("tapeAnimateEnd", (evt) => {
             const direction = evt.detail.direction;
-
             this.moveTapeItem(direction);
-        }, {signal});
+        }, { signal });
     }
-
     /**
-     * A private method that runs a tape animation
-     *
-     * @param direction
-     *
-     * @return {Promise<void>}
+     * A private method that runs a tape animation.
      */
-    async moveTapeItem(direction) {
-        const animation = new this.options.animate({
-            duration: this.options.duration,
-            timing: this.options.timing,
-            draw: progress => direction.progress(progress)
+    moveTapeItem(direction) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const animation = new this.options.animate({
+                duration: this.options.duration,
+                timing: this.options.timing,
+                draw: (progress) => direction.progress(progress),
+            });
+            this.directionCollection.set(direction.getItem(), direction);
+            this.animateCollection.set(direction, animation);
+            animation.begin();
         });
-
-        this.directionCollection.set(direction.getItem(), direction);
-        this.animateCollection.set(direction, animation);
-
-        animation.begin();
     }
-
     /**
-     * A private method that determines the length of the tape according to which offset line
-     *
-     * @param {ShiftX} shift
-     * @return {number}
+     * A private method that determines the length of the tape according to which offset line.
      */
     getDistance(shift) {
         let distance;
-
-        const getItemDistance = (positionProperty = 'offsetLeft', sizeProperty = 'offsetWidth') => {
+        const getItemDistance = (positionProperty = "offsetLeft", sizeProperty = "offsetWidth") => {
+            if (!(this.items.length > 0)) {
+                return 0;
+            }
             const [itemFirst] = this.items;
             const itemLast = this.items[this.items.length - 1];
-
             const firstDistance = itemFirst[positionProperty] + itemFirst[sizeProperty];
             const lastDistance = itemLast[positionProperty] + itemLast[sizeProperty];
-
             return firstDistance > lastDistance ? firstDistance : lastDistance;
-        }
-
+        };
         if (shift instanceof ShiftX) {
             distance = this.wrapper.clientWidth;
-
             if (this.options.elasticDistance === true) {
                 const itemDistance = getItemDistance();
-
                 if (itemDistance > distance) {
                     distance = itemDistance;
                 }
             }
-
             return distance;
         }
-
         distance = this.wrapper.clientHeight;
-
         if (this.options.elasticDistance === true) {
-            const itemDistance = getItemDistance('offsetTop', 'offsetHeight');
-
+            const itemDistance = getItemDistance("offsetTop", "offsetHeight");
             if (itemDistance > distance) {
                 distance = itemDistance;
             }
         }
-
         return distance;
     }
 }
