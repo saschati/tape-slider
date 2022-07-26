@@ -1,5 +1,5 @@
 export default class Direction {
-    constructor({ item, distance, shift, }) {
+    constructor({ item, distance, shift }) {
         this.finish = false;
         this.trigger = false;
         this.proggressed = 0;
@@ -106,6 +106,12 @@ export default class Direction {
      */
     getItem() {
         return this.item;
+    }
+    /**
+     * Return passed.
+     */
+    getPassed() {
+        return this.passed;
     }
     /**
      * Return the sorted order of items.

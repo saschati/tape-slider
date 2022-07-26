@@ -61,6 +61,8 @@ window.addEventListener('load', function () {
             timing: linage, // This field is responsible for linear functions for which time will be calculated according to the example of cubic-bezier from css
             insert: 'append', // The field responsible for the method of adding clones to the tape is required in some cases which will be described below
             elasticDistance: true, // This field indicates that you need to calculate the size of the tape, taking into account also the size of its elements, the default is true
+            To optimize the work of the plugin, when the option is active, an observer will be thrown on the tape object relative to the window, when the user is not looking at the tape, it will not move, the default is true.
+            optimize: true,
         }
     });
 

@@ -18,15 +18,7 @@ export default abstract class Direction {
   protected clone: HTMLElement | null = null;
   protected clonePassed: number | null = null;
 
-  constructor({
-    item,
-    distance,
-    shift,
-  }: {
-    item: HTMLElement;
-    distance: number;
-    shift: Shift;
-  }) {
+  constructor({ item, distance, shift }: { item: HTMLElement; distance: number; shift: Shift }) {
     this.item = item;
     this.shift = shift;
     this.distance = distance;
@@ -172,7 +164,7 @@ export default abstract class Direction {
    * The function of creating a clone and adding it to the tape at the specified position.
    */
   public showClone(func: (clone: HTMLElement) => void): void {
-    this.clone = this.item.cloneNode(true) as HTMLElement;
+    this.clone = <HTMLElement>this.item.cloneNode(true);
 
     func(this.clone);
 
@@ -186,6 +178,13 @@ export default abstract class Direction {
    */
   public getItem(): HTMLElement {
     return this.item;
+  }
+
+  /**
+   * Return passed.
+   */
+  public getPassed(): number {
+    return this.passed;
   }
 
   /**

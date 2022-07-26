@@ -10,6 +10,8 @@ export default class Animate {
   protected timeFraction: number = 0;
   protected time: number = 0;
 
+  protected rafId: number | null = null;
+
   constructor({
     duration,
     timing,
@@ -30,7 +32,7 @@ export default class Animate {
   begin(): void {
     this.start = performance.now();
 
-    requestAnimationFrame(this.animation.bind(this));
+    this.rafId = requestAnimationFrame(this.animation.bind(this));
   }
 
   /**
@@ -57,7 +59,11 @@ export default class Animate {
     this.start = performance.now();
     this.prevTF = this.timeFraction;
 
-    requestAnimationFrame(this.animation.bind(this));
+    if (this.rafId !== null) {
+      cancelAnimationFrame(this.rafId);
+    }
+
+    this.rafId = requestAnimationFrame(this.animation.bind(this));
   }
 
   /**
@@ -69,7 +75,13 @@ export default class Animate {
     }
 
     this.time = time;
-    this.timeFraction = this.prevTF + (this.time - this.start) / this.duration;
+    let diff: number = this.time - this.start;
+
+    if (diff < 0) {
+      diff = 0;
+    }
+
+    this.timeFraction = this.prevTF + diff / this.duration;
 
     if (this.timeFraction > 1) {
       this.timeFraction = 1;
@@ -78,7 +90,7 @@ export default class Animate {
     const progress: number = this.timing(this.timeFraction);
 
     if (this.draw(progress) && this.timeFraction < 1) {
-      requestAnimationFrame(this.animation.bind(this));
+      this.rafId = requestAnimationFrame(this.animation.bind(this));
     }
   }
 }

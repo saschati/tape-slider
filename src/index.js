@@ -54,24 +54,11 @@ export default class Tape {
             this.tapeAbort = new AbortController();
             const shift = new this.options.shift();
             this.items = this.direction.sort(this.wrapper.children);
-            const distance = this.getDistance(shift);
+            this.distance = this.getDistance(shift);
             this.events();
-            this.items.forEach((item) => this.moveTapeItem(new this.direction({ item, distance, shift })));
+            this.items.forEach((item) => this.moveTapeItem(new this.direction({ item, distance: this.distance, shift })));
             if (this.options.optimize === true) {
-                this.observer = new IntersectionObserver(([entity]) => {
-                    if ((entity === null || entity === void 0 ? void 0 : entity.isIntersecting) === true) {
-                        if (this.state === State.WORK) {
-                            return;
-                        }
-                        this.resume();
-                    }
-                    else {
-                        if (this.state === State.PAUSE) {
-                            return;
-                        }
-                        this.pause();
-                    }
-                });
+                this.observer = new IntersectionObserver(([entity]) => this.optimizeIf((entity === null || entity === void 0 ? void 0 : entity.isIntersecting) === false));
                 this.observer.observe(this.wrapper);
             }
             this.state = State.WORK;
@@ -110,7 +97,7 @@ export default class Tape {
         });
     }
     /**
-     * Destroy the plug-in environment, used when switching between windows, and can be useful after adding and removing ribbon dynamically.
+     * Destroy the plugin environment, used when switching between windows, and can be useful after adding and removing ribbon dynamically.
      */
     destroy() {
         var _a;
@@ -138,6 +125,11 @@ export default class Tape {
             const direction = evt.detail.direction;
             this.moveTapeItem(direction);
         }, { signal });
+        if (this.options.optimize === true) {
+            document.addEventListener("visibilitychange", () => this.optimizeIf(document.visibilityState === "hidden"), {
+                signal,
+            });
+        }
     }
     /**
      * A private method that runs a tape animation.
@@ -147,7 +139,7 @@ export default class Tape {
             const animation = new this.options.animate({
                 duration: this.options.duration,
                 timing: this.options.timing,
-                draw: (progress) => direction.progress(progress),
+                draw: direction.progress.bind(direction),
             });
             this.directionCollection.set(direction.getItem(), direction);
             this.animateCollection.set(direction, animation);
@@ -187,5 +179,22 @@ export default class Tape {
             }
         }
         return distance;
+    }
+    /**
+     * The tape optimization function turns it on or off as needed by logical definition
+     */
+    optimizeIf(condition) {
+        if (condition === true) {
+            if (this.state !== State.WORK) {
+                return;
+            }
+            this.pause();
+        }
+        else {
+            if (this.state !== State.PAUSE) {
+                return;
+            }
+            this.resume();
+        }
     }
 }

@@ -5,6 +5,7 @@ export default class Animate {
         this.start = 0;
         this.timeFraction = 0;
         this.time = 0;
+        this.rafId = null;
         this.duration = duration;
         this.timing = timing;
         this.draw = draw;
@@ -14,7 +15,7 @@ export default class Animate {
      */
     begin() {
         this.start = performance.now();
-        requestAnimationFrame(this.animation.bind(this));
+        this.rafId = requestAnimationFrame(this.animation.bind(this));
     }
     /**
      * Pause animation
@@ -35,7 +36,10 @@ export default class Animate {
         this.isStop = false;
         this.start = performance.now();
         this.prevTF = this.timeFraction;
-        requestAnimationFrame(this.animation.bind(this));
+        if (this.rafId !== null) {
+            cancelAnimationFrame(this.rafId);
+        }
+        this.rafId = requestAnimationFrame(this.animation.bind(this));
     }
     /**
      * Private element animation calculation function
@@ -45,13 +49,17 @@ export default class Animate {
             return;
         }
         this.time = time;
-        this.timeFraction = this.prevTF + (this.time - this.start) / this.duration;
+        let diff = this.time - this.start;
+        if (diff < 0) {
+            diff = 0;
+        }
+        this.timeFraction = this.prevTF + diff / this.duration;
         if (this.timeFraction > 1) {
             this.timeFraction = 1;
         }
         const progress = this.timing(this.timeFraction);
         if (this.draw(progress) && this.timeFraction < 1) {
-            requestAnimationFrame(this.animation.bind(this));
+            this.rafId = requestAnimationFrame(this.animation.bind(this));
         }
     }
 }

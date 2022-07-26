@@ -30,13 +30,12 @@ export default class Tape {
   /**
    * Collection of directions with the value of the ribbon element and its direction.
    */
-  protected directionCollection: WeakMap<HTMLElement, Direction> =
-    new WeakMap();
+  protected directionCollection: WeakMap<HTMLElement, Direction> = new WeakMap();
 
   /**
    * A collection of animations with the value of direction and animation that is responsible for this direction.
    */
-  animateCollection: WeakMap<Direction, Animate> = new WeakMap();
+  protected animateCollection: WeakMap<Direction, Animate> = new WeakMap();
 
   /**
    * Tape wrapper with elements.
@@ -62,6 +61,11 @@ export default class Tape {
    * Tape observer.
    */
   protected observer?: IntersectionObserver;
+
+  /**
+   * The distance of the entire path that the element must travel.
+   */
+  protected distance?: number;
 
   constructor({
     wrapper,
@@ -93,32 +97,18 @@ export default class Tape {
 
     const shift: Shift = new (this.options.shift as any)();
 
-    this.items = this.direction.sort(this.wrapper.children) as HTMLElement[];
-    const distance = this.getDistance(shift);
+    this.items = <HTMLElement[]>this.direction.sort(this.wrapper.children);
+    this.distance = this.getDistance(shift);
 
     this.events();
 
     this.items.forEach((item) =>
-      this.moveTapeItem(new (this.direction as any)({ item, distance, shift }))
+      this.moveTapeItem(new (this.direction as any)({ item, distance: this.distance, shift }))
     );
 
     if (this.options.optimize === true) {
-      this.observer = new IntersectionObserver(
-        ([entity]: IntersectionObserverEntry[]): void => {
-          if (entity?.isIntersecting === true) {
-            if (this.state === State.WORK) {
-              return;
-            }
-
-            this.resume();
-          } else {
-            if (this.state === State.PAUSE) {
-              return;
-            }
-
-            this.pause();
-          }
-        }
+      this.observer = new IntersectionObserver(([entity]: IntersectionObserverEntry[]): void =>
+        this.optimizeIf(entity?.isIntersecting === false)
       );
 
       this.observer.observe(this.wrapper);
@@ -132,20 +122,14 @@ export default class Tape {
    */
   public async pause(): Promise<void> {
     if (State.WORK !== this.state) {
-      throw new Error(
-        `The tape does not move so it cannot be stopped. Current status of the tape: '${this.state}'`
-      );
+      throw new Error(`The tape does not move so it cannot be stopped. Current status of the tape: '${this.state}'`);
     }
 
     this.state = State.PAUSE;
 
     this.items!.forEach((item) => {
-      const direction: Direction = this.directionCollection.get(
-        item
-      ) as Direction;
-      const animation: Animate = this.animateCollection.get(
-        direction
-      ) as Animate;
+      const direction: Direction = <Direction>this.directionCollection.get(item);
+      const animation: Animate = <Animate>this.animateCollection.get(direction);
 
       animation.wait();
     });
@@ -156,33 +140,25 @@ export default class Tape {
    */
   public async resume(): Promise<void> {
     if (this.state !== State.PAUSE) {
-      throw new Error(
-        `The tape is not paused at this time. Current status of the tape: '${this.state}'`
-      );
+      throw new Error(`The tape is not paused at this time. Current status of the tape: '${this.state}'`);
     }
 
     this.state = State.WORK;
 
     this.items!.forEach((item) => {
-      const direction: Direction = this.directionCollection.get(
-        item
-      ) as Direction;
-      const animation: Animate = this.animateCollection.get(
-        direction
-      ) as Animate;
+      const direction: Direction = <Direction>this.directionCollection.get(item);
+      const animation: Animate = <Animate>this.animateCollection.get(direction);
 
       animation.continue();
     });
   }
 
   /**
-   * Destroy the plug-in environment, used when switching between windows, and can be useful after adding and removing ribbon dynamically.
+   * Destroy the plugin environment, used when switching between windows, and can be useful after adding and removing ribbon dynamically.
    */
   public destroy(): void {
     if (this.state === State.UNSPECIFIED) {
-      throw new Error(
-        "The plugin has not yet started, there is nothing to destroy."
-      );
+      throw new Error("The plugin has not yet started, there is nothing to destroy.");
     }
 
     this.tapeAbort!.abort();
@@ -190,7 +166,6 @@ export default class Tape {
 
     this.directionCollection = new WeakMap();
     this.animateCollection = new WeakMap();
-
 
     this.state = State.UNSPECIFIED;
   }
@@ -221,6 +196,12 @@ export default class Tape {
       },
       { signal }
     );
+
+    if (this.options.optimize === true) {
+      document.addEventListener("visibilitychange", () => this.optimizeIf(document.visibilityState === "hidden"), {
+        signal,
+      });
+    }
   }
 
   /**
@@ -230,7 +211,7 @@ export default class Tape {
     const animation = new this.options.animate({
       duration: this.options.duration,
       timing: this.options.timing,
-      draw: (progress) => direction.progress(progress),
+      draw: direction.progress.bind(direction),
     });
 
     this.directionCollection.set(direction.getItem(), direction);
@@ -253,12 +234,11 @@ export default class Tape {
         return 0;
       }
 
-      const [itemFirst] = this.items as HTMLElement[];
-      const itemLast = this.items![this.items!.length - 1] as HTMLElement;
+      const [itemFirst] = <HTMLElement[]>this.items;
+      const itemLast = this.items![this.items!.length - 1];
 
-      const firstDistance =
-        itemFirst![positionProperty] + itemFirst![sizeProperty];
-      const lastDistance = itemLast[positionProperty] + itemLast[sizeProperty];
+      const firstDistance = itemFirst![positionProperty] + itemFirst![sizeProperty];
+      const lastDistance = itemLast![positionProperty] + itemLast![sizeProperty];
 
       return firstDistance > lastDistance ? firstDistance : lastDistance;
     };
@@ -288,5 +268,24 @@ export default class Tape {
     }
 
     return distance;
+  }
+
+  /**
+   * The tape optimization function turns it on or off as needed by logical definition
+   */
+  protected optimizeIf(condition: boolean): void {
+    if (condition === true) {
+      if (this.state !== State.WORK) {
+        return;
+      }
+
+      this.pause();
+    } else {
+      if (this.state !== State.PAUSE) {
+        return;
+      }
+
+      this.resume();
+    }
   }
 }
